@@ -18,7 +18,8 @@ services:
     volumes:
       - ./src:/app/src
       - ./data:/app/data
-      - ./output:/app/outputs
+      - ./output:/app/output
+      - ./models:/app/models
 
     working_dir: /app
 

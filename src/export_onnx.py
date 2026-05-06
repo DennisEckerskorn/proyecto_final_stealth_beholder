@@ -1,70 +1,69 @@
-import tensorflow as tf
-import tf2onnx
-import onnx
 import os
 
+import onnx
+import tensorflow as tf
+import tf2onnx
 
-def ejecutar_exportacion():
+
+def ejecutar_exportacion(
+    model_path="models/optimized_model.h5",
+    output_path="output/models/modelo_final.onnx",
+):
     """
     Convierte el modelo Keras (.h5) a formato ONNX (.onnx).
-    Esta función es llamada por el main.py central.
-    """
-    # 1. Configuración de rutas simplificada para Docker (/app)
-    # Usamos rutas relativas al directorio de trabajo actual para evitar errores de permisos.
-    model_path = "models/optimized_model.h5"
-    output_path = "output/models/modelo_final.onnx"
 
-    # Asegurar que la carpeta de salida existe dentro del volumen mapeado
-    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    Devuelve la ruta del ONNX si la conversión y validación terminan bien; si no,
+    devuelve None para que el flujo principal no anuncie una exportación inexistente.
+    """
+    os.makedirs(os.path.dirname(output_path) or ".", exist_ok=True)
 
     print(f"--- 🧠 Cargando modelo Keras: {model_path} ---")
 
-    # Verificación de existencia del modelo previo a la carga
     if not os.path.exists(model_path):
         print(f"❌ Error crítico: No se encuentra el archivo {model_path}")
         print(f"Directorio actual: {os.getcwd()}")
-        return
+        return None
 
     try:
         model = tf.keras.models.load_model(model_path)
     except Exception as e:
         print(f"❌ Error al cargar el modelo H5: {e}")
-        return
+        return None
 
-    # 2. Requisito del proyecto: Imágenes de 224x224 y 3 canales (RGB)[cite: 1]
     spec = (tf.TensorSpec((None, 224, 224, 3), tf.float32, name="input"),)
 
     print("--- 🔄 Convirtiendo a ONNX (Modo Inferencia: training=False) ---")
 
-    # Envolver el modelo en una tf.function fija los nodos.
-    # Forzamos training=False para desactivar Dropout/BatchNormalization.[cite: 1]
     @tf.function(input_signature=spec)
     def model_fn(x):
         return model(x, training=False)
 
-    # 3. Conversión usando la función concreta[cite: 1]
     try:
-        model_proto, _ = tf2onnx.convert.from_function(
+        tf2onnx.convert.from_function(
             model_fn,
             input_signature=spec,
             opset=13,
-            output_path=output_path
+            output_path=output_path,
         )
-        print(f"✅ ¡Conversión finalizada!")
     except Exception as e:
         print(f"❌ Error durante la conversión de tf2onnx: {e}")
-        return
+        return None
 
-    # 4. Verificación de integridad (Punto clave de tu Rol 7)[cite: 1]
+    if not os.path.exists(output_path) or os.path.getsize(output_path) == 0:
+        print(f"❌ Error: tf2onnx terminó pero no generó un archivo válido en {output_path}")
+        return None
+
     try:
-        # Cargamos el modelo recién creado para validar que no está corrupto[cite: 1]
         check_model = onnx.load(output_path)
         onnx.checker.check_model(check_model)
-        print(f"🛡️ Verificación exitosa: El archivo ONNX en {output_path} es válido.")
     except Exception as e:
         print(f"❌ Error de validación: El modelo exportado tiene problemas. Detalle: {e}")
+        return None
 
-    print(f"--- Proceso Stealth Beholder (Export) Completado ---")
+    print(f"✅ ¡Conversión finalizada y guardada en {output_path}!")
+    print(f"🛡️ Verificación exitosa: El archivo ONNX en {output_path} es válido.")
+    print("--- Proceso Stealth Beholder (Export) Completado ---")
+    return output_path
 
 
 if __name__ == "__main__":
