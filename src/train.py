@@ -3,7 +3,7 @@ import os
 from src.datapipeline import load_datasets
 from src.model import create_model, compile_model
 
-def train_and_evaluate(data_path="data/dataset"):
+def train_and_evaluate(data_path="data/dataset", output_path="models/optimized_model.h5"):
     BATCH_SIZE = 16
     EPOCHS = 40
 
@@ -65,14 +65,11 @@ def train_and_evaluate(data_path="data/dataset"):
     print(f"\n✅ Entrenamiento finalizado.")
     print(f"✅ Precisión en Validación (Mejor época): {acc * 100:.2f}%\n")
 
-    # ASEGURAR CARPETA DESDE LA RAÍZ DEL PROYECTO (/app)
-    output_dir = "models"
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-
-    # Guardamos el modelo optimizado
-    model.save("models/optimized_model.h5")
-    print(f"💾 Modelo guardado en: models/optimized_model.h5")
+    # Guardamos el modelo optimizado en la ruta configurada.
+    output_dir = os.path.dirname(output_path) or "."
+    os.makedirs(output_dir, exist_ok=True)
+    model.save(output_path)
+    print(f"💾 Modelo guardado en: {output_path}")
 
 if __name__ == "__main__":
     train_and_evaluate()

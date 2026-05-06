@@ -46,7 +46,7 @@ COPY src/ ./src
 COPY main.py .
 
 #Crear carpetas necesarias 
-RUN mkdir -p /app/data /app/outputs/models /app/outputs/logs
+RUN mkdir -p /app/data /app/output/models /app/output/logs /app/models
 
 #Comando por defecto
 CMD ["python", "main.py"]
